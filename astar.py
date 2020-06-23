@@ -1,3 +1,5 @@
+import gui
+
 class Node():
     """A node class for A* Pathfinding"""
 
@@ -31,8 +33,31 @@ class Grid:
         self.grid = [[Node()] * size for _ in range(size)]
         self.actual_pos = Node(None, [initial_pos[0], initial_pos[1]])
         self.end_pos = (end_position[0], end_position[1])
+        self.observer = gui.Observer()
+
+    def can_move_diagonals(self, movement):
+        i = self.actual_pos.position[0] + movement[0]
+        j = self.actual_pos.position[1] + 0
+
+        if i < 0 or j < 0 or i >= self.size or j >= self.size:
+            first = False
+        else:
+            first =  not self.grid[i][j].is_wall()
+
+        i = self.actual_pos.position[0] + 0
+        j = self.actual_pos.position[1] + movement[1]
+
+        if i < 0 or j < 0 or i >= self.size or j >= self.size:
+            second = False
+        else:
+            second =  not self.grid[i][j].is_wall()
+
+        return first or second
+
+
 
     def can_move(self, movement):
+
         i = self.actual_pos.position[0] + movement[0]
         j = self.actual_pos.position[1] + movement[1]
 
@@ -44,7 +69,9 @@ class Grid:
         return (self.actual_pos.position[0] + direction[0], self.actual_pos.position[1] + direction[1])
 
     def distance(self, position):
-        return abs(position[0] - self.end_pos[0]) + abs(position[1] - self.end_pos[1])
+        #return abs(position[0] - self.end_pos[0]) + abs(position[1] - self.end_pos[1])
+        return max([abs(position[0] - self.end_pos[0]), abs(position[1] - self.end_pos[1])])
+        #return ((position[0] - self.end_pos[0]) ** 2) + ((position[1] - self.end_pos[1]) ** 2)
 
     def have_finished(self):
         return self.actual_pos.position == self.end_pos
@@ -52,9 +79,24 @@ class Grid:
     def set_wall(self, position):
         self.grid[position[0]][position[1]] = Wall()
 
+    def actual_observed(self):
+        self.observer.paint_current(self.actual_pos.position[0], self.actual_pos.position[1])
+
+    def visited_observed(self, i, j):
+        self.observer.paint_seen(i, j)
+
+    def paint_init(self, i, j):
+        self.observer.paint_init(i, j)
+
+    def paint_end(self, i, j):
+        self.observer.paint_end(i, j)
+
+    def shortest_path(self, i, j):
+        self.observer.paint_shortest_path(i, j)
+
     def print(self):
         for row in self.grid:
-            print ([i.g for i in row])
+            print (["--" if i.is_wall() else i.f for i in row])
 
 LEFT = (0, -1)
 RIGHT = (0, 1)
@@ -64,7 +106,7 @@ DIAG_NW = (1, -1)
 DIAG_SW = (-1, -1)
 DIAG_NE = (1, 1)
 DIAG_SE = (-1, 1)
-movements = (RIGHT, DOWN, LEFT, UP)
+movements = (RIGHT, DOWN, LEFT, UP, DIAG_SW, DIAG_SE, DIAG_NW, DIAG_NE)
 
 def astar2(maze):
     start_node = maze.actual_pos
@@ -74,7 +116,8 @@ def astar2(maze):
     closed_list = []
 
     while open_list:
-
+        import time
+        time.sleep(0.01)
         current_index = 0
         maze.actual_pos = open_list[0]
         for index, item in enumerate(open_list):
@@ -84,6 +127,7 @@ def astar2(maze):
 
         open_list.pop(current_index)
         closed_list.append(maze.actual_pos)
+        maze.actual_observed()
 
         if maze.have_finished():
             path = []
@@ -91,147 +135,64 @@ def astar2(maze):
             while current is not None:
                 path.append(current.position)
                 current = current.parent
-            return path[::-1]  # Return reversed path
+            return path
 
         children = []
         for move in movements:
-            if maze.can_move(move):
+            if maze.can_move(move) and maze.can_move_diagonals(move):
                 children.append(Node(maze.actual_pos, maze.move(move)))
 
-        print("Node actual --> " + str(maze.actual_pos.position)+" Distancia: "+str(maze.actual_pos.f))
         for child in children:
-            if child not in closed_list and not in_open_list(child, open_list):
+            if child not in closed_list:
 
                 child.g = maze.actual_pos.g + 1
                 child.h = maze.distance(child.position)
                 child.f = child.g + child.h
 
+                shall_continue = True
+                for open in open_list:
+                    if open == child and child.g < open.g:
+                        open_list = remove(open_list, open)
+                    if open == child and child.f >= open.f:
+                        shall_continue = False
+                        break
+
+                if not shall_continue:
+                    continue
+
+
                 open_list.append(child)
                 maze.grid[child.position[0]][child.position[1]] = child
+                maze.visited_observed(child.position[0], child.position[1])
+
+def remove(open_list, open):
+    arr = []
+    for x in open_list:
+        if open  != x:
+            arr.append(x)
+    return arr
 
 def in_open_list(child, open_list):
     if child not in open_list:
         return False
-    for open in open_list:
-        if open == child and child.g < open.g:
-            return False
     return True
 
-
-def astar(maze, start, end):
-    """Returns a list of tuples as a path from the given start to the given end in the given maze"""
-
-    # Create start and end node
-    start_node = Node(None, start)
-    start_node.g = start_node.h = start_node.f = 0
-    end_node = Node(None, end)
-    end_node.g = end_node.h = end_node.f = 0
-
-    # Initialize both open and closed list
-    open_list = []
-    closed_list = []
-
-    # Add the start node
-    open_list.append(start_node)
-
-    # Loop until you find the end
-    while len(open_list) > 0:
-
-        # Get the current node
-        current_node = open_list[0]
-        current_index = 0
-        for index, item in enumerate(open_list):
-            if item.f < current_node.f:
-                current_node = item
-                current_index = index
-
-        # Pop current off open list, add to closed list
-        open_list.pop(current_index)
-        closed_list.append(current_node)
-
-        # Found the goal
-        if current_node == end_node:
-            path = []
-            current = current_node
-            while current is not None:
-                path.append(current.position)
-                current = current.parent
-            return path[::-1] # Return reversed path
-
-        # Generate children
-        children = []
-        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]: # Adjacent squares
-
-            # Get node position
-            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
-
-            # Make sure within range
-            if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
-                continue
-
-            # Make sure walkable terrain
-            if maze[node_position[0]][node_position[1]] != 0:
-                continue
-
-            # Create new node
-            new_node = Node(current_node, node_position)
-
-            # Append
-            children.append(new_node)
-
-        # Loop through children
-        for child in children:
-            #print(child.position)
-
-            # Child is on the closed list
-            for closed_child in closed_list:
-                #print("for closed_child")
-                if child == closed_child:
-                    #print("chiled == closed_child")
-                    continue
-
-            # Create the f, g, and h values
-            child.g = current_node.g + 1
-            child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
-            child.f = child.g + child.h
-
-            # Child is already in the open list
-            for open_node in open_list:
-                if child == open_node and child.g > open_node.g:
-                    continue
-
-            # Add the child to the open list
-            open_list.append(child)
+def paint_shortest_path(maze, shortest_path):
+    maze.paint_end(shortest_path[0][0], shortest_path[0][1])
+    maze.paint_init(shortest_path[-1][0], shortest_path[-1][1])
+    shortest_path = shortest_path[1:-1]
+    for pos in shortest_path:
+        maze.shortest_path(pos[0], pos[1])
 
 
-def main():
-    maze = Grid(5, (0, 0), (4, 2))
-    maze.set_wall((4, 1))
-    maze.set_wall((3, 2))
-    maze.set_wall((2, 3))
-    maze.set_wall((1, 3))
-    maze.set_wall((2, 1))
-    print(astar2(maze))
-    maze.print()
 
-def main2():
-    maze = [[0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+def main(walls, initial, end):
+    maze = Grid(gui.num_lines, initial, end[0])#REFEEEER
+    set_walls(maze, walls)
+    shortest_path = astar2(maze)
+    paint_shortest_path(maze, shortest_path)
 
-    start = (0, 0)
-    end = (7, 6)
-
-    path = astar(maze, start, end)
-    print(path)
-
-if __name__ == '__main__':
-    main()
+def set_walls(maze, walls):
+    for wall in walls:
+        maze.set_wall(wall)
 

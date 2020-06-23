@@ -20,19 +20,38 @@ class Connection:
     def add_end(self, end):
         self.end.append(end)
 
+    def remove(self, coordinate):
+        x = []
+        for i in self.walls:
+            if coordinate != i:
+                x.append(i)
+        self.walls = x
+
     def erase(self, coordinate):
         if coordinate == self.init:
             self.init = (0, 0)
         if coordinate in self.walls:
-            self.walls.remove(coordinate)
+            self.remove(coordinate)
         if coordinate in self.end:
             self.end.remove(coordinate)
 
-
+class Observer:
+    def __init__(self):
+        pass
+    def paint_init(self, i, j):
+        paint(i, j, (46, 139, 87))
+    def paint_end(self, i, j):
+        paint(i, j, (124, 10, 2))
+    def paint_seen(self, i, j):
+        paint(i, j, (96, 125, 139))
+    def paint_current(self, i, j):
+        paint(i, j, (176, 190, 197))
+    def paint_shortest_path(self, i, j):
+        paint(i, j, (253, 216, 53))
 
 
 screen_size = 600
-num_lines = 25
+num_lines = 50 #screen_size%num_lones = 0
 toSend = Connection()
 
 pygame.init()
@@ -141,6 +160,8 @@ def check_status(status):
         Tk().wm_withdraw() # to hide the main window
         messagebox.showerror('Warning', "You need to select at least one end-point")
         return False
+    elif status == "Select Checkpoints":
+        astar.main(toSend.walls, toSend.init, toSend.end)
     return True
 
 def main():
@@ -150,9 +171,9 @@ def main():
     global screen
     create_screen()
     add_lines()
-    running = True
+    turn_on = True
     pygame.display.set_caption("A* PathFinder > "+status)
-    while running:
+    while turn_on:
         for event in pygame.event.get():
             coordinates_click(status)
             if event.type == pygame.KEYDOWN:
@@ -164,8 +185,7 @@ def main():
                     pygame.display.set_caption("A* PathFinder > " + status)
 
             if event.type == pygame.QUIT:
-                running = False
-
+                turn_on = False
 
 
 if __name__ == '__main__':
