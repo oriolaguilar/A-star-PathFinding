@@ -165,7 +165,7 @@ def check_status(status):
     return True
 
 def main():
-    status_list =["Draw Walls", "Select Initial Point", "Select Checkpoints", "Running"
+    status_list = ["Draw Walls", "Select Initial Point", "Select Checkpoints", "Running"
                                                                               "", "Clear"]
     status = status_list[0]
     global screen
@@ -184,6 +184,13 @@ def main():
                     status = status_list[0]
                     pygame.display.set_caption("A* PathFinder > " + status)
 
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    status_list = ["Draw Walls", "Select Initial Point", "Select Checkpoints", "Running"
+                                                                              "", "Clear"]
+                    status = status_list[0]
+                    create_screen()
+                    add_lines()
             if event.type == pygame.QUIT:
                 turn_on = False
 
