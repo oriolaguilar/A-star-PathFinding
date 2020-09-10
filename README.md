@@ -17,3 +17,5 @@ If you wanna start again from any steo press ESC.
 ### How to Zoom
 
 If you press the UP-BUTTON it will zoom-in centering to the point where your mouse is located, if you press the DOWN-BUTTON, it will zoom-out.
+
+![How it looks!](https://github.com/oriolaguilar/A-star-PathFinding/blob/master/foto_path.png)
